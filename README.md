@@ -13,14 +13,14 @@ Mio Music 的音乐列表插件：Songloft、Subsonic、Navidrome、Jellyfin、E
 
 ## 使用
 
-- 随 [Mio-Music-GPUI](https://github.com/Mio888888/Mio-Music-GPUI) 内置：设置 → 插件 → 音乐列表插件 → “插件目录”，一键安装或更新，安装后在“配置”里填写服务器地址与账号。
+- 随 [Mio-Music](https://github.com/Mio888888/Mio-Music) 内置：应用启动时自动安装并按版本更新，在设置 → 插件 → 音乐列表插件的插件卡片上点“配置”，填写服务器地址与账号即可。
 - 单独安装：“安装列表插件”，选择本地文件或输入 URL。
 
 更新已安装的插件时重新安装同名脚本即可，配置会保留。
 
 ## 作为子模块
 
-本仓库在 Mio-Music-GPUI 中以子模块挂在 `plugins/`，应用用 `include_str!` 把根目录下的脚本嵌入。因此脚本必须放在仓库根目录，文件名不要改；脚本头部 `@name` 与 `@version` 用于目录中的安装状态和更新判断，改动脚本时同步递增版本号。
+本仓库在 [Mio-Music](https://github.com/Mio888888/Mio-Music) 中以子模块挂在 `plugins/`，应用用 `include_str!` 把根目录下的脚本嵌入。因此脚本必须放在仓库根目录，文件名不要改；脚本头部 `@name` 用来识别内置插件，`@version` 决定启动时是否更新已安装的副本，改动脚本时同步递增版本号。
 
 ## 契约
 
