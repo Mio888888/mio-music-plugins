@@ -1,31 +1,55 @@
 # mio-music-plugins
 
-Mio Music 的音乐列表插件：Songloft、Subsonic、Navidrome、Jellyfin、Emby、Plex 的接入脚本。每个 `*.list.js` 是自包含脚本，在宿主的 QuickJS 沙箱中运行，提供搜索、专辑与歌单、发现、歌手、歌词、播放与下载中声明支持的能力。
+**English** | [简体中文](README.zh-CN.md)
 
-| 文件 | 来源 ID | 能力 |
+Music list plugins for [Mio-Music](https://github.com/Mio888888/Mio-Music): integration scripts for Songloft, Subsonic, Navidrome, Jellyfin, Emby and Plex. Each `*.list.js` is a self-contained script that runs in the host's QuickJS sandbox, signs in to your own server, and provides the capabilities it declares, so your self-hosted library shows up as a music source with playback and download.
+
+## Plugins
+
+| File | Source ID | Version | Capabilities |
+|---|---|---|---|
+| `songloft.list.js` | `songloft` | 1.0.0 | Search, albums/artists/genres and playlists, discovery, lyrics, playback and download |
+| `subsonic.list.js` | `subsonic` | 1.2.1 | Search, albums and playlists, discovery, playback and download. Any Subsonic-compatible server; no artist pages or lyrics (use `navidrome` for Navidrome) |
+| `navidrome.list.js` | `navidrome` | 1.0.0 | Search, albums and playlists, discovery, artists, lyrics, playback and download |
+| `jellyfin.list.js` | `jellyfin` | 1.0.0 | Search, albums and playlists, discovery, artists, lyrics, playback and download |
+| `emby.list.js` | `emby` | 1.0.0 | Search, albums and playlists, discovery, artists, playback and download (no lyrics) |
+| `plex.list.js` | `plex` | 1.0.0 | Search, albums and playlists, discovery, artists, playback and download (no lyrics) |
+
+All plugins offer the same quality options (`128k`, `320k`, `flac`), and each has a connection test in its configuration form.
+
+## Usage
+
+- Bundled with Mio-Music: the app installs the plugins automatically on startup and updates them by version. Go to Settings → Plugins → Music List Plugins, click "Configure" on the plugin card, fill in the fields below, and run the connection test.
+- Standalone install: choose "Install list plugin", then pick a local file or enter a URL.
+
+To update an installed plugin, reinstall the script with the same name; its configuration is kept.
+
+## Configuration
+
+Every plugin takes a server address and credentials, plus an "Allow HTTP (unencrypted)" switch. Plain `http://` addresses are rejected unless the switch is on; loopback addresses such as `localhost` are exempt.
+
+| Plugin | Server address | Credentials |
 |---|---|---|
-| `songloft.list.js` | `songloft` | 搜索、专辑/歌手/流派与歌单、歌词、播放与下载 |
-| `subsonic.list.js` | `subsonic` | 搜索、专辑与歌单、发现、播放与下载 |
-| `navidrome.list.js` | `navidrome` | 搜索、专辑与歌单、发现、歌手、歌词、播放与下载 |
-| `jellyfin.list.js` | `jellyfin` | 搜索、专辑与歌单、发现、歌手、歌词、播放与下载 |
-| `emby.list.js` | `emby` | 搜索、专辑与歌单、发现、歌手、播放与下载 |
-| `plex.list.js` | `plex` | 搜索、专辑与歌单、发现、歌手、播放与下载 |
+| Songloft | Server root, default port `58091`; include the sub-path if behind a reverse proxy | Username (default admin: `admin`) and password |
+| Subsonic, Navidrome | Server root, without `/rest` | Username and password (sent only as a salted token, never in clear text); optional API version (default `1.16.1`) and client name |
+| Jellyfin | Server root | Username and password, or an API key (Dashboard → API Keys); with an API key the username may be left empty and the first user is used |
+| Emby | Server root, without `/emby` (e.g. `http://192.168.1.2:8096`) | Same as Jellyfin |
+| Plex | Server root, default port `32400` | `X-Plex-Token` (required), optional music library name; the first music library is used when empty |
 
-## 使用
+## Notes on behavior
 
-- 随 [Mio-Music](https://github.com/Mio888888/Mio-Music) 内置：应用启动时自动安装并按版本更新，在设置 → 插件 → 音乐列表插件的插件卡片上点“配置”，填写服务器地址与账号即可。
-- 单独安装：“安装列表插件”，选择本地文件或输入 URL。
+- **Songloft** has no album or artist objects of its own. Albums, artists and genres are the server's song facets, and opening one lists the songs with exactly that value.
+- **Emby and Jellyfin** share one code base: the two files differ only in the header and the `FLAVOR` line at the top (which also decides whether lyrics are offered). Apply any fix to both files.
+- **Navidrome and Subsonic** both speak the Subsonic / OpenSubsonic API; `navidrome.list.js` adds artists and lyrics on top of it.
 
-更新已安装的插件时重新安装同名脚本即可，配置会保留。
+## As a submodule
 
-## 作为子模块
+This repository is mounted at `plugins/` in Mio-Music as a submodule, and the app embeds the scripts in the repository root with `include_str!`. The scripts must therefore stay in the repository root and must not be renamed. The `@name` in each script header identifies the bundled plugin, and `@version` decides whether the installed copy is updated on startup, so bump the version (in both the header and the exported `version`) whenever you change a script.
 
-本仓库在 [Mio-Music](https://github.com/Mio888888/Mio-Music) 中以子模块挂在 `plugins/`，应用用 `include_str!` 把根目录下的脚本嵌入。因此脚本必须放在仓库根目录，文件名不要改；脚本头部 `@name` 用来识别内置插件，`@version` 决定启动时是否更新已安装的副本，改动脚本时同步递增版本号。
+## Contract
 
-## 契约
+A script exports `module.exports = { listPlugin: { name, version, author, description, config, sources, ...methods } }`, and its methods return camelCase JSON matching the host's `mio-music-sdk` types. The host provides `cerumusic.request`, `cerumusic.requestAll`, `cerumusic.storage`, `cerumusic.config`, `cerumusic.utils.crypto.md5` and so on; there is no file system, no process and no `require`. Limits: 30 seconds per call, at most 24 requests, response body ≤ 16 MB, script ≤ 1 MiB.
 
-脚本导出 `module.exports = { listPlugin: { name, version, author, description, config, sources, ...方法 } }`，方法返回与宿主 `mio-music-sdk` 类型一致的 camelCase JSON。宿主提供 `cerumusic.request`、`cerumusic.requestAll`、`cerumusic.storage`、`cerumusic.config`、`cerumusic.utils.crypto.md5` 等；没有文件系统、进程和 `require`。限制：单次调用 30 秒、最多 24 个请求、响应体 ≤16MB、脚本 ≤1MiB。
+## Verification status
 
-## 验证状态
-
-Navidrome 与 Jellyfin 已对官方公开演示服务器实际调用；Songloft、Plex、Emby 仅按其文档用本地模拟服务跑通流程，未对真实服务器验证；Jellyfin 的下载地址因演示账号无权限未验证。
+Navidrome and Jellyfin have been exercised against their official public demo servers. Songloft, Plex and Emby have only been run end to end against local mock servers built from their documentation, not against real servers. Subsonic has no recorded verification against a real server. Jellyfin download URLs are unverified because the demo account lacks permission. There is no automated test suite in this repository.
