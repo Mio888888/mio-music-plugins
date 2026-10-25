@@ -1,0 +1,35 @@
+name: Feature request / 功能建议
+description: Support a new server or a missing capability. / 支持新的服务器，或补上缺少的能力。
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        These plugins connect to servers that people host themselves. Requests for a copyrighted music service cannot be accepted.
+        这些插件连接的是用户自建的服务器，无法接受针对受版权保护的音乐服务的请求。
+  - type: input
+    id: target
+    attributes:
+      label: Server or plugin / 服务器或插件
+      description: A new server (with a link to its API documentation), or one of the existing plugins. / 新的服务器（附 API 文档链接），或现有的某个插件。
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is missing or hard today? / 现在缺少什么或哪里不方便？
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like instead? / 你希望怎样
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit / 提交前
+      options:
+        - label: I searched the existing issues. / 我搜索过已有的 issue。
+          required: true

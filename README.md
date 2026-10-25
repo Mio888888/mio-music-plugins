@@ -2,6 +2,8 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
+[![License: AGPL-3.0-only](https://img.shields.io/badge/license-AGPL--3.0--only-blue.svg)](LICENSE)
+
 Music list plugins for [Mio-Music](https://github.com/Mio888888/Mio-Music): integration scripts for Songloft, Subsonic, Navidrome, Jellyfin, Emby and Plex. Each `*.list.js` is a self-contained script that runs in the host's QuickJS sandbox, signs in to your own server, and provides the capabilities it declares, so your self-hosted library shows up as a music source with playback and download.
 
 ## Plugins
@@ -61,3 +63,9 @@ User-facing text goes through `tr(zh, en)`, defined at the top of each script fr
 ## Verification status
 
 Navidrome and Jellyfin have been exercised against their official public demo servers. Songloft, Plex and Emby have only been run end to end against local mock servers built from their documentation, not against real servers. Subsonic has no recorded verification against a real server. Jellyfin download URLs are unverified because the demo account lacks permission. The bilingual text was checked by loading all six scripts in the host runtime in both languages (metadata, form labels, discovery categories and the missing-configuration error) and by switching the language of an installed plugin; the English error messages and chart names on paths that need a live server were not run. There is no automated test suite in this repository.
+
+## Contributing, security and license
+
+Contributions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md). Please report security problems privately as described in [SECURITY.md](SECURITY.md).
+
+Licensed under the [GNU Affero General Public License v3.0 only](LICENSE) (`AGPL-3.0-only`), the same as Mio-Music, which embeds these scripts. The server products these plugins connect to (Songloft, Subsonic, Navidrome, Jellyfin, Emby, Plex) are separate projects with their own licenses and trademarks; this repository is not affiliated with them.

@@ -2,6 +2,8 @@
 
 [English](README.md) | **简体中文**
 
+[![License: AGPL-3.0-only](https://img.shields.io/badge/license-AGPL--3.0--only-blue.svg)](LICENSE)
+
 [Mio-Music](https://github.com/Mio888888/Mio-Music) 的音乐列表插件：Songloft、Subsonic、Navidrome、Jellyfin、Emby、Plex 的接入脚本。每个 `*.list.js` 是自包含脚本，在宿主的 QuickJS 沙箱中运行，登录你自己的服务器，并提供声明支持的能力，让自建音乐库成为带播放与下载的音乐来源。
 
 ## 插件
@@ -61,3 +63,9 @@
 ## 验证状态
 
 Navidrome 与 Jellyfin 已对官方公开演示服务器实际调用；Songloft、Plex、Emby 仅按其文档用本地模拟服务跑通流程，未对真实服务器验证；Subsonic 没有对真实服务器的验证记录；Jellyfin 的下载地址因演示账号无权限未验证。双语文本已在宿主运行时中以两种语言加载全部六个脚本做过检查（元数据、配置表单标签、发现分类、缺少配置时的报错），也验证了已安装插件切换语言；需要真实服务器才会走到的英文错误提示和榜单名称没有运行过。本仓库没有自动化测试。
+
+## 贡献、安全与许可
+
+欢迎参与贡献：见 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md) 与[行为准则](CODE_OF_CONDUCT.zh-CN.md)。安全问题请按 [SECURITY.zh-CN.md](SECURITY.zh-CN.md) 私下报告。
+
+采用 [GNU Affero General Public License v3.0 only](LICENSE)（`AGPL-3.0-only`）许可，与内嵌这些脚本的 Mio-Music 一致。这些插件所连接的服务器产品（Songloft、Subsonic、Navidrome、Jellyfin、Emby、Plex）是各自独立的项目，有各自的许可证与商标；本仓库与它们没有隶属关系。

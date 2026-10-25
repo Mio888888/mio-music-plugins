@@ -1,0 +1,84 @@
+name: Bug report / 问题反馈
+description: A plugin does not work as expected. / 某个插件不符合预期。
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please search the existing issues first. **Do not paste passwords, tokens, access keys or private server addresses.**
+        请先搜索已有的 issue。**不要贴出密码、令牌、访问密钥或私有服务器地址。**
+  - type: dropdown
+    id: plugin
+    attributes:
+      label: Plugin / 插件
+      options:
+        - Songloft
+        - Subsonic
+        - Navidrome
+        - Jellyfin
+        - Emby
+        - Plex
+    validations:
+      required: true
+  - type: input
+    id: plugin_version
+    attributes:
+      label: Plugin version / 插件版本
+      description: Shown on the plugin card, for example 1.1.0. / 显示在插件卡片上，例如 1.1.0。
+    validations:
+      required: true
+  - type: input
+    id: app_version
+    attributes:
+      label: Mio-Music version and platform / Mio-Music 版本与平台
+      description: For example 1.0.3, macOS 15. / 例如 1.0.3、macOS 15。
+    validations:
+      required: true
+  - type: input
+    id: server
+    attributes:
+      label: Server and version / 服务器及版本
+      description: For example Navidrome 0.54, Jellyfin 10.10. / 例如 Navidrome 0.54、Jellyfin 10.10。
+    validations:
+      required: true
+  - type: dropdown
+    id: language
+    attributes:
+      label: Interface language / 界面语言
+      options:
+        - 简体中文
+        - English
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened? / 发生了什么？
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / 复现步骤
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect? / 你期望的结果
+  - type: textarea
+    id: logs
+    attributes:
+      label: Plugin log or screenshots / 插件日志或截图
+      description: The plugin log is under the plugin card. Remove anything private. / 插件日志在插件卡片上；请先去掉隐私信息。
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit / 提交前
+      options:
+        - label: I searched the existing issues. / 我搜索过已有的 issue。
+          required: true
+        - label: This report contains no passwords, tokens or private addresses. / 本反馈不含密码、令牌或私有地址。
+          required: true

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability / 报告安全漏洞
+    url: https://github.com/Mio888888/mio-music-plugins/security/advisories/new
+    about: Please report security problems privately, not as an issue. / 安全问题请私下报告，不要新建 issue。
+  - name: Problems with the app itself / 应用本身的问题
+    url: https://github.com/Mio888888/Mio-Music/issues
+    about: Playback, the interface, installation and anything that is not about one of these plugins belongs in Mio-Music. / 播放、界面、安装等与这些插件无关的问题请到 Mio-Music 提。
