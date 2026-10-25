@@ -1,6 +1,6 @@
 /**
  * @name Songloft（列表）
- * @version 1.0.0
+ * @version 1.1.0
  * @author Mio Music
  * @description Songloft 个人音乐服务器：搜索、专辑/歌手/流派与歌单、歌词，并由本插件提供播放与下载地址。
  *
@@ -9,6 +9,14 @@
  * refresh token. Songloft has no album or artist objects of its own: albums, artists and genres
  * are the server's song facets, and a facet's songs are the songs with that exact value.
  */
+
+/**
+ * Text follows the host's language: `cerumusic.locale` is `zh-CN` or `en-US`, and Chinese is the
+ * fallback for a host that does not provide it. `tr(zh, en)` picks one. The plugin `name` stays
+ * Chinese on purpose: the host identifies an installed plugin by it.
+ */
+const EN = typeof cerumusic.locale === 'string' && !/^zh/i.test(cerumusic.locale);
+const tr = (zh, en) => (EN ? en : zh);
 const SOURCE = 'songloft';
 const PAGE = 30;
 const SKEW_MS = 60 * 1000;
@@ -27,13 +35,13 @@ function settings() {
   const username = String(c.username || '').trim();
   const password = String(c.password || '');
   if (!baseUrl || !username || !password) {
-    throw new Error('请先在插件“配置”中填写服务器地址、用户名和密码');
+    throw new Error(tr('请先在插件“配置”中填写服务器地址、用户名和密码', 'Enter the server address, username and password under the plugin\'s "Configure" first'));
   }
   const m = /^(https?):\/\/([^\/?#@]+)(\/[^?#]*)?$/i.exec(baseUrl);
-  if (!m) throw new Error('服务器地址无效');
+  if (!m) throw new Error(tr('服务器地址无效', 'Invalid server address'));
   const loopback = /^(localhost|127(\.\d{1,3}){3}|\[::1\])(:\d+)?$/i.test(m[2]);
   if (m[1].toLowerCase() === 'http' && !loopback && c.allowHttp !== true) {
-    throw new Error('HTTP 服务器需要在配置中勾选“允许 HTTP（不加密）”');
+    throw new Error(tr('HTTP 服务器需要在配置中勾选“允许 HTTP（不加密）”', 'HTTP servers need "Allow HTTP (unencrypted)" turned on in the configuration'));
   }
   let path = (m[3] || '').replace(/\/+$/, '');
   if (path.endsWith('/api/v1')) path = path.slice(0, -7);
@@ -44,7 +52,10 @@ const sessionKey = (s) => `${s.api}|${s.username}|${cerumusic.utils.crypto.md5(s
 
 function fail(r, what) {
   const detail = r.body && typeof r.body === 'object' ? str(r.body, 'error') : '';
-  return new Error(`Songloft ${what}失败（HTTP ${r.statusCode}）${detail ? '：' + detail : ''}`);
+  return new Error(tr(
+    `Songloft ${what}失败（HTTP ${r.statusCode}）${detail ? '：' + detail : ''}`,
+    `Songloft ${what} failed (HTTP ${r.statusCode})${detail ? ': ' + detail : ''}`,
+  ));
 }
 
 function remember(s, data, previous) {
@@ -66,10 +77,10 @@ async function login(s) {
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ username: s.username, password: s.password }),
   });
-  if (r.statusCode === 401) throw new Error('Songloft 登录失败：用户名或密码错误');
-  if (r.statusCode < 200 || r.statusCode >= 300) throw fail(r, '登录');
+  if (r.statusCode === 401) throw new Error(tr('Songloft 登录失败：用户名或密码错误', 'Songloft login failed: wrong username or password'));
+  if (r.statusCode < 200 || r.statusCode >= 300) throw fail(r, tr('登录', 'login'));
   if (!r.body || typeof r.body !== 'object' || !r.body.access_token) {
-    throw new Error('Songloft 返回了无效数据（地址是否指向了网页？）');
+    throw new Error(tr('Songloft 返回了无效数据（地址是否指向了网页？）', 'Songloft returned invalid data (does the address point to a web page?)'));
   }
   return remember(s, r.body, null);
 }
@@ -108,21 +119,21 @@ async function get(s, path, params) {
       continue;
     }
     if (r.statusCode === 404) {
-      const e = new Error('Songloft 中没有找到对应内容');
+      const e = new Error(tr('Songloft 中没有找到对应内容', 'Not found on Songloft'));
       e.notFound = true;
       throw e;
     }
-    if (r.statusCode < 200 || r.statusCode >= 300) throw fail(r, '请求');
+    if (r.statusCode < 200 || r.statusCode >= 300) throw fail(r, tr('请求', 'request'));
     if (typeof r.body === 'string') {
       try {
         return { data: JSON.parse(r.body), sess };
       } catch (_) {
-        throw new Error('Songloft 返回的不是 JSON（地址是否指向了网页？）');
+        throw new Error(tr('Songloft 返回的不是 JSON（地址是否指向了网页？）', 'Songloft did not return JSON (does the address point to a web page?)'));
       }
     }
     return { data: r.body, sess };
   }
-  throw new Error('Songloft 请求失败');
+  throw new Error(tr('Songloft 请求失败', 'Songloft request failed'));
 }
 
 /** Media and picture URLs carry the access token in the query, which Songloft accepts there. */
@@ -184,7 +195,7 @@ const playlistItem = (s, sess, p) => ({
 });
 
 /** The facet kinds discovery offers: id prefix → [song filter, group title]. */
-const FACETS = { al: ['album', '专辑'], ar: ['artist', '歌手'], ge: ['genre', '流派'] };
+const FACETS = { al: ['album', tr('专辑', 'Albums')], ar: ['artist', tr('歌手', 'Artists')], ge: ['genre', tr('流派', 'Genres')] };
 
 // ─── list API ──────────────────────────────────────────────
 async function search(_source, { keyword, page, limit }) {
@@ -225,16 +236,16 @@ const albumDetail = playlistDetail;
 async function discoveryCategories() {
   return {
     groups: [
-      { name: '音乐库', list: [
-        { id: 'albums', name: '专辑', source: SOURCE },
-        { id: 'artists', name: '歌手', source: SOURCE },
-        { id: 'genres', name: '流派', source: SOURCE },
+      { name: tr('音乐库', 'Library'), list: [
+        { id: 'albums', name: tr('专辑', 'Albums'), source: SOURCE },
+        { id: 'artists', name: tr('歌手', 'Artists'), source: SOURCE },
+        { id: 'genres', name: tr('流派', 'Genres'), source: SOURCE },
       ] },
-      { name: '歌单', list: [{ id: 'playlists', name: '服务器歌单', source: SOURCE }] },
+      { name: tr('歌单', 'Playlists'), list: [{ id: 'playlists', name: tr('服务器歌单', 'Server playlists'), source: SOURCE }] },
     ],
     hot: [
-      { id: 'albums', name: '专辑', source: SOURCE },
-      { id: 'playlists', name: '服务器歌单', source: SOURCE },
+      { id: 'albums', name: tr('专辑', 'Albums'), source: SOURCE },
+      { id: 'playlists', name: tr('服务器歌单', 'Server playlists'), source: SOURCE },
     ],
     source: SOURCE,
   };
@@ -250,7 +261,7 @@ async function discoveryPlaylists(_source, { category, page }) {
     return { list: arr(data.playlists).map((p) => playlistItem(s, sess, p)), page, total, has_more: page * PAGE < total, source: SOURCE };
   }
   const field = { albums: 'album', artists: 'artist', genres: 'genre' }[kind];
-  if (!field) throw new Error('无效的分类');
+  if (!field) throw new Error(tr('无效的分类', 'Invalid category'));
   const prefix = { albums: 'al', artists: 'ar', genres: 'ge' }[kind];
   const { data, sess } = await get(s, '/songs/facets', { field, sort: 'name', order: 'asc', ...window });
   const list = arr(data.facets)
@@ -270,9 +281,9 @@ async function discoveryPlaylists(_source, { category, page }) {
 }
 
 const CHARTS = [
-  ['newest', '最近添加', { sort: 'added_at', order: 'desc' }],
-  ['random', '随机歌曲', null],
-  ['longest', '最长歌曲', { sort: 'duration', order: 'desc' }],
+  ['newest', tr('最近添加', 'Recently added'), { sort: 'added_at', order: 'desc' }],
+  ['random', tr('随机歌曲', 'Random songs'), null],
+  ['longest', tr('最长歌曲', 'Longest songs'), { sort: 'duration', order: 'desc' }],
 ];
 
 async function discoveryCharts() {
@@ -281,7 +292,7 @@ async function discoveryCharts() {
 
 async function chartDetail(_source, { id, page }) {
   const chart = CHARTS.find(([cid]) => cid === id);
-  if (!chart) throw new Error('无效榜单参数');
+  if (!chart) throw new Error(tr('无效榜单参数', 'Invalid chart parameter'));
   const info = { name: chart[1], img: '', desc: '', author: '' };
   if (id === 'random') {
     // A random batch has no stable pages: serve one.
@@ -356,16 +367,16 @@ async function singerAlbums(_source, { id, page, limit }) {
 async function lyrics(_source, { song: item }) {
   const s = settings();
   const id = String((item && item.songmid) || '');
-  if (!/^\d+$/.test(id)) throw new Error('无效歌曲 ID');
+  if (!/^\d+$/.test(id)) throw new Error(tr('无效歌曲 ID', 'Invalid song ID'));
   let data;
   try {
     data = (await get(s, `/songs/${id}/lyric`, {})).data;
   } catch (e) {
-    if (e.notFound) throw new Error('没有找到歌词');
+    if (e.notFound) throw new Error(tr('没有找到歌词', 'No lyrics found'));
     throw e;
   }
   const lyric = str(data, 'lyric');
-  if (!lyric.trim()) throw new Error('没有找到歌词');
+  if (!lyric.trim()) throw new Error(tr('没有找到歌词', 'No lyrics found'));
   return { lyric, tlyric: str(data, 'tlyric'), rlyric: str(data, 'rlyric'), crlyric: str(data, 'lxlyric'), source: SOURCE };
 }
 
@@ -375,7 +386,7 @@ const BITRATE = { '128k': 128, '320k': 320 };
 async function playUrl(_source, { song: item, quality }) {
   const s = settings();
   const id = String((item && item.songmid) || '');
-  if (!/^\d+$/.test(id)) throw new Error('缺少歌曲 ID');
+  if (!/^\d+$/.test(id)) throw new Error(tr('缺少歌曲 ID', 'Missing song ID'));
   const sess = await session(s);
   // Lower qualities are transcoded to MP3; lossless is the original file.
   return media(s, sess, `/songs/${id}/play`, BITRATE[quality] ? { format: 'mp3', quality: BITRATE[quality] } : {});
@@ -385,7 +396,7 @@ async function cover(_source, { song: item }) {
   if (item && typeof item.img === 'string' && item.img) return item.img;
   const s = settings();
   const id = String((item && item.songmid) || '');
-  if (!/^\d+$/.test(id)) throw new Error('无效歌曲 ID');
+  if (!/^\d+$/.test(id)) throw new Error(tr('无效歌曲 ID', 'Invalid song ID'));
   const { data, sess } = await get(s, `/songs/${id}`, {});
   return coverOf(s, sess, str(data, 'cover_url'), 300);
 }
@@ -395,14 +406,18 @@ module.exports = {
     cover,
     lyrics,
     name: 'Songloft（列表）',
-    version: '1.0.0',
+    displayName: tr('Songloft（列表）', 'Songloft (List)'),
+    version: '1.1.0',
     author: 'Mio Music',
-    description: 'Songloft 个人音乐服务器：搜索、专辑/歌手/流派与歌单、歌词，并由本插件提供播放与下载。',
+    description: tr(
+      'Songloft 个人音乐服务器：搜索、专辑/歌手/流派与歌单、歌词，并由本插件提供播放与下载。',
+      'Songloft personal music server: search, albums/artists/genres and playlists, lyrics, with playback and download provided by this plugin.',
+    ),
     config: [
-      { key: 'baseUrl', label: '服务器地址', type: 'text', required: true, placeholder: 'http://192.168.1.2:58091', description: '服务器根地址，默认端口 58091；使用反向代理子路径时包含该路径' },
-      { key: 'username', label: '用户名', type: 'text', required: true, description: '默认管理员为 admin' },
-      { key: 'password', label: '密码', type: 'password', required: true },
-      { key: 'allowHttp', label: '允许 HTTP（不加密）', type: 'switch', default: false, description: '回环地址（localhost）无需勾选' },
+      { key: 'baseUrl', label: tr('服务器地址', 'Server address'), type: 'text', required: true, placeholder: 'http://192.168.1.2:58091', description: tr('服务器根地址，默认端口 58091；使用反向代理子路径时包含该路径', 'Server root, default port 58091; include the sub-path when behind a reverse proxy') },
+      { key: 'username', label: tr('用户名', 'Username'), type: 'text', required: true, description: tr('默认管理员为 admin', 'The default administrator is admin') },
+      { key: 'password', label: tr('密码', 'Password'), type: 'password', required: true },
+      { key: 'allowHttp', label: tr('允许 HTTP（不加密）', 'Allow HTTP (unencrypted)'), type: 'switch', default: false, description: tr('回环地址（localhost）无需勾选', 'Not needed for loopback addresses (localhost)') },
     ],
     defaults: { play: true, download: true },
     sources: {

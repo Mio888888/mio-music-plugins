@@ -1,6 +1,6 @@
 /**
  * @name Navidrome（列表）
- * @version 1.0.0
+ * @version 1.1.0
  * @author Mio Music
  * @description Navidrome 音乐服务器：搜索、专辑与歌单、随机/收藏歌曲、歌手、歌词，并由本插件提供播放与下载地址。
  *
@@ -8,16 +8,24 @@
  * account are set in the plugin's configuration form; the verified login is cached in the
  * plugin's own store so each call does not have to ping the server first.
  */
+
+/**
+ * Text follows the host's language: `cerumusic.locale` is `zh-CN` or `en-US`, and Chinese is the
+ * fallback for a host that does not provide it. `tr(zh, en)` picks one. The plugin `name` stays
+ * Chinese on purpose: the host identifies an installed plugin by it.
+ */
+const EN = typeof cerumusic.locale === 'string' && !/^zh/i.test(cerumusic.locale);
+const tr = (zh, en) => (EN ? en : zh);
 const SOURCE = 'navidrome';
 const PAGE = 30;
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 const ALBUM_KINDS = [
-  ['newest', '最新添加'],
-  ['recent', '最近播放'],
-  ['frequent', '常听专辑'],
-  ['random', '随机专辑'],
-  ['starred', '我的收藏'],
-  ['alphabeticalByName', '按名称'],
+  ['newest', tr('最新添加', 'Recently added')],
+  ['recent', tr('最近播放', 'Recently played')],
+  ['frequent', tr('常听专辑', 'Most played')],
+  ['random', tr('随机专辑', 'Random albums')],
+  ['starred', tr('我的收藏', 'My favorites')],
+  ['alphabeticalByName', tr('按名称', 'By name')],
 ];
 
 const str = (o, k) => (o !== null && typeof o === 'object' && typeof o[k] === 'string' ? o[k] : '');
@@ -34,13 +42,13 @@ function settings() {
   const username = String(c.username || '').trim();
   const password = String(c.password || '');
   if (!baseUrl || !username || !password) {
-    throw new Error('请先在插件“配置”中填写服务器地址、用户名和密码');
+    throw new Error(tr('请先在插件“配置”中填写服务器地址、用户名和密码', 'Enter the server address, username and password under the plugin\'s "Configure" first'));
   }
   const m = /^(https?):\/\/([^\/?#@]+)(\/[^?#]*)?$/i.exec(baseUrl);
-  if (!m) throw new Error('服务器地址无效');
+  if (!m) throw new Error(tr('服务器地址无效', 'Invalid server address'));
   const loopback = /^(localhost|127(\.\d{1,3}){3}|\[::1\])(:\d+)?$/i.test(m[2]);
   if (m[1].toLowerCase() === 'http' && !loopback && c.allowHttp !== true) {
-    throw new Error('HTTP 服务器需要在配置中勾选“允许 HTTP（不加密）”');
+    throw new Error(tr('HTTP 服务器需要在配置中勾选“允许 HTTP（不加密）”', 'HTTP servers need "Allow HTTP (unencrypted)" turned on in the configuration'));
   }
   let path = (m[3] || '').replace(/\/+$/, '');
   if (path.endsWith('/rest')) path = path.slice(0, -5);
@@ -72,24 +80,24 @@ const sessionKey = (s) => `${s.base}|${s.username}|${cerumusic.utils.crypto.md5(
 
 async function call(s, method, params) {
   const r = await cerumusic.request(url(s, method, params), {});
-  if (r.statusCode < 200 || r.statusCode >= 300) throw new Error(`Navidrome 返回 HTTP ${r.statusCode}`);
+  if (r.statusCode < 200 || r.statusCode >= 300) throw new Error(tr(`Navidrome 返回 HTTP ${r.statusCode}`, `Navidrome returned HTTP ${r.statusCode}`));
   let body = r.body;
   if (typeof body === 'string') {
     try {
       body = JSON.parse(body);
     } catch (_) {
-      throw new Error('Navidrome 返回的不是 JSON（地址是否指向了网页？）');
+      throw new Error(tr('Navidrome 返回的不是 JSON（地址是否指向了网页？）', 'Navidrome did not return JSON (does the address point to a web page?)'));
     }
   }
   const data = body && body['subsonic-response'];
-  if (!data) throw new Error('Navidrome 返回了无效数据');
+  if (!data) throw new Error(tr('Navidrome 返回了无效数据', 'Navidrome returned invalid data'));
   if (data.status === 'ok') return data;
   const code = data.error && data.error.code;
   if (code === 40) {
     cerumusic.storage.remove('session');
-    throw new Error('Navidrome 登录失败：用户名或密码错误');
+    throw new Error(tr('Navidrome 登录失败：用户名或密码错误', 'Navidrome login failed: wrong username or password'));
   }
-  throw new Error(`Navidrome 接口错误 ${code === undefined ? '' : code}`.trim());
+  throw new Error(tr(`Navidrome 接口错误 ${code === undefined ? '' : code}`, `Navidrome API error ${code === undefined ? '' : code}`).trim());
 }
 
 /** Verifies the login once and remembers it, so later calls skip the ping. */
@@ -181,12 +189,12 @@ const albumDetail = playlistDetail;
 async function discoveryCategories() {
   return {
     groups: [
-      { name: '专辑', list: ALBUM_KINDS.map(([id, name]) => ({ id, name, source: SOURCE })) },
-      { name: '歌单', list: [{ id: 'playlists', name: '服务器歌单', source: SOURCE }] },
+      { name: tr('专辑', 'Albums'), list: ALBUM_KINDS.map(([id, name]) => ({ id, name, source: SOURCE })) },
+      { name: tr('歌单', 'Playlists'), list: [{ id: 'playlists', name: tr('服务器歌单', 'Server playlists'), source: SOURCE }] },
     ],
     hot: [
-      { id: 'newest', name: '最新添加', source: SOURCE },
-      { id: 'random', name: '随机专辑', source: SOURCE },
+      { id: 'newest', name: tr('最新添加', 'Recently added'), source: SOURCE },
+      { id: 'random', name: tr('随机专辑', 'Random albums'), source: SOURCE },
     ],
     source: SOURCE,
   };
@@ -212,7 +220,7 @@ async function discoveryPlaylists(_source, { category, page }) {
     }));
     hasMore = page * PAGE < all.length;
   } else {
-    if (!ALBUM_KINDS.some(([id]) => id === kind)) throw new Error('无效的专辑分类');
+    if (!ALBUM_KINDS.some(([id]) => id === kind)) throw new Error(tr('无效的专辑分类', 'Invalid album category'));
     const data = await call(s, 'getAlbumList2', { type: kind, size: PAGE, offset: (page - 1) * PAGE });
     list = arr(data.albumList2 && data.albumList2.album).map((a) => ({
       id: `al-${a.id}`,
@@ -250,8 +258,8 @@ async function getPlaylists(_source, { page, limit }) {
 /** Navidrome has no charts; two song lists stand in for them. */
 async function discoveryCharts() {
   return [
-    { id: 'random', name: '随机歌曲', img: '', source: SOURCE, update_frequency: '' },
-    { id: 'starred', name: '收藏歌曲', img: '', source: SOURCE, update_frequency: '' },
+    { id: 'random', name: tr('随机歌曲', 'Random songs'), img: '', source: SOURCE, update_frequency: '' },
+    { id: 'starred', name: tr('收藏歌曲', 'Favorite songs'), img: '', source: SOURCE, update_frequency: '' },
   ];
 }
 
@@ -265,12 +273,12 @@ async function chartDetail(_source, { id, page }) {
     const data = await call(s, 'getStarred2', {});
     rows = arr(data.starred2 && data.starred2.song);
   } else {
-    throw new Error('无效榜单参数');
+    throw new Error(tr('无效榜单参数', 'Invalid chart parameter'));
   }
   const total = rows.length;
   return {
     list: songs(s, rows.slice((page - 1) * PAGE, page * PAGE)),
-    info: { name: id === 'random' ? '随机歌曲' : '收藏歌曲', img: '', desc: '', author: '' },
+    info: { name: id === 'random' ? tr('随机歌曲', 'Random songs') : tr('收藏歌曲', 'Favorite songs'), img: '', desc: '', author: '' },
     allPage: pages(total, PAGE),
     limit: PAGE,
     total,
@@ -284,7 +292,7 @@ const BITRATE = { '128k': 128, '320k': 320 };
 async function musicUrl(_source, { song: item, quality }) {
   const s = await ready();
   const id = item && item.songmid;
-  if (id === undefined || id === null || id === '') throw new Error('缺少歌曲 ID');
+  if (id === undefined || id === null || id === '') throw new Error(tr('缺少歌曲 ID', 'Missing song ID'));
   const params = { id: String(id) };
   // The original file for lossless. The lower qualities are transcoded down to MP3 explicitly:
   // without a format the server picks its default transcoding (often Opus), which the player
@@ -299,7 +307,7 @@ async function musicUrl(_source, { song: item, quality }) {
 async function downloadUrl(_source, { song: item, quality }) {
   const s = await ready();
   const id = item && item.songmid;
-  if (id === undefined || id === null || id === '') throw new Error('缺少歌曲 ID');
+  if (id === undefined || id === null || id === '') throw new Error(tr('缺少歌曲 ID', 'Missing song ID'));
   if (BITRATE[quality]) return url(s, 'stream', { id: String(id), maxBitRate: BITRATE[quality], format: 'mp3' });
   return url(s, 'download', { id: String(id) });
 }
@@ -310,7 +318,7 @@ async function cover(_source, {song}) {
   if(song&&typeof song.img==='string'&&song.img)return song.img;
   song=song||{};
   const id=String(song.songmid||'');
-  if(!id||id.length>128)throw Error('无效歌曲 ID');
+  if(!id||id.length>128)throw Error(tr('无效歌曲 ID', 'Invalid song ID'));
   const s=await ready();
   const data=await call(s,'getSong',{id});
   return coverUrl(s,str(data.song,'coverArt'),300);
@@ -339,7 +347,7 @@ function lrcOf(entry) {
 async function lyrics(_source, { song: item }) {
   const s = await ready();
   const id = String((item && item.songmid) || '');
-  if (!id || id.length > 128) throw new Error('无效歌曲 ID');
+  if (!id || id.length > 128) throw new Error(tr('无效歌曲 ID', 'Invalid song ID'));
   let lyric = '';
   try {
     const data = await call(s, 'getLyricsBySongId', { id });
@@ -353,7 +361,7 @@ async function lyrics(_source, { song: item }) {
     const data = await call(s, 'getLyrics', { artist: item.singer || '', title: item.name });
     lyric = str(data.lyrics, 'value');
   }
-  if (!lyric.trim()) throw new Error('没有找到歌词');
+  if (!lyric.trim()) throw new Error(tr('没有找到歌词', 'No lyrics found'));
   return { lyric, tlyric: '', rlyric: '', crlyric: '', source: SOURCE };
 }
 
@@ -425,16 +433,20 @@ module.exports = {
     singerSongs,
     singerAlbums,
     name: 'Navidrome（列表）',
-    version: '1.0.0',
+    displayName: tr('Navidrome（列表）', 'Navidrome (List)'),
+    version: '1.1.0',
     author: 'Mio Music',
-    description: 'Navidrome 音乐服务器：搜索、专辑与歌单、随机/收藏歌曲、歌手、歌词，并由本插件提供播放与下载。',
+    description: tr(
+      'Navidrome 音乐服务器：搜索、专辑与歌单、随机/收藏歌曲、歌手、歌词，并由本插件提供播放与下载。',
+      'Navidrome music server: search, albums and playlists, random/favorite songs, artists and lyrics, with playback and download provided by this plugin.',
+    ),
     config: [
-      { key: 'baseUrl', label: '服务器地址', type: 'text', required: true, placeholder: 'https://music.example.com', description: '服务器根地址，不含 /rest' },
-      { key: 'username', label: '用户名', type: 'text', required: true },
-      { key: 'password', label: '密码', type: 'password', required: true, description: '仅以令牌形式发送，不会明文出现在请求里' },
-      { key: 'apiVersion', label: 'API 版本', type: 'text', default: '1.16.1' },
-      { key: 'clientName', label: '客户端名称', type: 'text', default: 'Mio' },
-      { key: 'allowHttp', label: '允许 HTTP（不加密）', type: 'switch', default: false, description: '回环地址（localhost）无需勾选' },
+      { key: 'baseUrl', label: tr('服务器地址', 'Server address'), type: 'text', required: true, placeholder: 'https://music.example.com', description: tr('服务器根地址，不含 /rest', 'Server root, without /rest') },
+      { key: 'username', label: tr('用户名', 'Username'), type: 'text', required: true },
+      { key: 'password', label: tr('密码', 'Password'), type: 'password', required: true, description: tr('仅以令牌形式发送，不会明文出现在请求里', 'Sent only as a salted token, never in clear text') },
+      { key: 'apiVersion', label: tr('API 版本', 'API version'), type: 'text', default: '1.16.1' },
+      { key: 'clientName', label: tr('客户端名称', 'Client name'), type: 'text', default: 'Mio' },
+      { key: 'allowHttp', label: tr('允许 HTTP（不加密）', 'Allow HTTP (unencrypted)'), type: 'switch', default: false, description: tr('回环地址（localhost）无需勾选', 'Not needed for loopback addresses (localhost)') },
     ],
     defaults: { play: true, download: true },
     sources: {

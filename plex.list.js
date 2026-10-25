@@ -1,6 +1,6 @@
 /**
  * @name Plex（列表）
- * @version 1.0.0
+ * @version 1.1.0
  * @author Mio Music
  * @description Plex Media Server 的音乐库：搜索、专辑与歌单、最近添加/常听歌曲、歌手，并由本插件提供播放与下载地址。
  *
@@ -8,21 +8,29 @@
  * Server directly with an X-Plex-Token, in one music library (the first, unless one is named in
  * the configuration form).
  */
+
+/**
+ * Text follows the host's language: `cerumusic.locale` is `zh-CN` or `en-US`, and Chinese is the
+ * fallback for a host that does not provide it. `tr(zh, en)` picks one. The plugin `name` stays
+ * Chinese on purpose: the host identifies an installed plugin by it.
+ */
+const EN = typeof cerumusic.locale === 'string' && !/^zh/i.test(cerumusic.locale);
+const tr = (zh, en) => (EN ? en : zh);
 const SOURCE = 'plex';
 const PAGE = 30;
 const LIBRARY_TTL_MS = 10 * 60 * 1000;
 const ALBUM_KINDS = [
-  ['newest', '最新添加', 'addedAt:desc'],
-  ['recent', '最近播放', 'lastViewedAt:desc'],
-  ['frequent', '常听专辑', 'viewCount:desc'],
-  ['rated', '最高评分', 'userRating:desc'],
-  ['alphabeticalByName', '按名称', 'titleSort'],
+  ['newest', tr('最新添加', 'Recently added'), 'addedAt:desc'],
+  ['recent', tr('最近播放', 'Recently played'), 'lastViewedAt:desc'],
+  ['frequent', tr('常听专辑', 'Most played'), 'viewCount:desc'],
+  ['rated', tr('最高评分', 'Top rated'), 'userRating:desc'],
+  ['alphabeticalByName', tr('按名称', 'By name'), 'titleSort'],
 ];
 const CHARTS = [
-  ['newest', '最近添加', 'addedAt:desc'],
-  ['recent', '最近播放', 'lastViewedAt:desc'],
-  ['frequent', '常听歌曲', 'viewCount:desc'],
-  ['rated', '高分歌曲', 'userRating:desc'],
+  ['newest', tr('最近添加', 'Recently added'), 'addedAt:desc'],
+  ['recent', tr('最近播放', 'Recently played'), 'lastViewedAt:desc'],
+  ['frequent', tr('常听歌曲', 'Most played songs'), 'viewCount:desc'],
+  ['rated', tr('高分歌曲', 'Top rated songs'), 'userRating:desc'],
 ];
 
 const str = (o, k) => (o !== null && typeof o === 'object' && typeof o[k] === 'string' ? o[k] : '');
@@ -37,12 +45,12 @@ function settings() {
   const c = cerumusic.config || {};
   const baseUrl = String(c.baseUrl || '').trim();
   const token = String(c.token || '').trim();
-  if (!baseUrl || !token) throw new Error('请先在插件“配置”中填写服务器地址和 Plex 令牌（X-Plex-Token）');
+  if (!baseUrl || !token) throw new Error(tr('请先在插件“配置”中填写服务器地址和 Plex 令牌（X-Plex-Token）', 'Enter the server address and Plex token (X-Plex-Token) under the plugin\'s "Configure" first'));
   const m = /^(https?):\/\/([^\/?#@]+)(\/[^?#]*)?$/i.exec(baseUrl);
-  if (!m) throw new Error('服务器地址无效');
+  if (!m) throw new Error(tr('服务器地址无效', 'Invalid server address'));
   const loopback = /^(localhost|127(\.\d{1,3}){3}|\[::1\])(:\d+)?$/i.test(m[2]);
   if (m[1].toLowerCase() === 'http' && !loopback && c.allowHttp !== true) {
-    throw new Error('HTTP 服务器需要在配置中勾选“允许 HTTP（不加密）”');
+    throw new Error(tr('HTTP 服务器需要在配置中勾选“允许 HTTP（不加密）”', 'HTTP servers need "Allow HTTP (unencrypted)" turned on in the configuration'));
   }
   return {
     base: `${m[1].toLowerCase()}://${m[2]}${(m[3] || '').replace(/\/+$/, '')}`,
@@ -82,18 +90,18 @@ async function api(s, path, params, window) {
     h['X-Plex-Container-Size'] = String(window.size);
   }
   const r = await cerumusic.request(`${s.base}${path}${query ? (path.includes('?') ? '&' : '?') + query : ''}`, { headers: h });
-  if (r.statusCode === 401) throw new Error('Plex 拒绝了令牌（401），请检查 X-Plex-Token');
-  if (r.statusCode < 200 || r.statusCode >= 300) throw new Error(`Plex 返回 HTTP ${r.statusCode}`);
+  if (r.statusCode === 401) throw new Error(tr('Plex 拒绝了令牌（401），请检查 X-Plex-Token', 'Plex rejected the token (401); check the X-Plex-Token'));
+  if (r.statusCode < 200 || r.statusCode >= 300) throw new Error(tr(`Plex 返回 HTTP ${r.statusCode}`, `Plex returned HTTP ${r.statusCode}`));
   let body = r.body;
   if (typeof body === 'string') {
     try {
       body = JSON.parse(body);
     } catch (_) {
-      throw new Error('Plex 返回的不是 JSON（地址是否指向了网页？）');
+      throw new Error(tr('Plex 返回的不是 JSON（地址是否指向了网页？）', 'Plex did not return JSON (does the address point to a web page?)'));
     }
   }
   const container = body && body.MediaContainer;
-  if (!container) throw new Error('Plex 返回了无效数据');
+  if (!container) throw new Error(tr('Plex 返回了无效数据', 'Plex returned invalid data'));
   return container;
 }
 
@@ -103,7 +111,9 @@ async function library(s) {
   if (cached && cached.key === `${s.base}|${s.library}` && Date.now() - cached.at < LIBRARY_TTL_MS) return cached.id;
   const sections = arr((await api(s, '/library/sections', {})).Directory).filter((d) => d.type === 'artist');
   const pick = (s.library && sections.find((d) => d.title === s.library)) || (!s.library && sections[0]);
-  if (!pick) throw new Error(s.library ? `没有找到名为“${s.library}”的音乐库` : '服务器上没有音乐库');
+  if (!pick) throw new Error(s.library
+    ? tr(`没有找到名为“${s.library}”的音乐库`, `No music library named "${s.library}" was found`)
+    : tr('服务器上没有音乐库', 'The server has no music library'));
   const id = String(pick.key);
   cerumusic.storage.set('library', { key: `${s.base}|${s.library}`, id, at: Date.now() });
   return id;
@@ -217,12 +227,12 @@ const albumDetail = playlistDetail;
 async function discoveryCategories() {
   return {
     groups: [
-      { name: '专辑', list: ALBUM_KINDS.map(([id, name]) => ({ id, name, source: SOURCE })) },
-      { name: '歌单', list: [{ id: 'playlists', name: '服务器歌单', source: SOURCE }] },
+      { name: tr('专辑', 'Albums'), list: ALBUM_KINDS.map(([id, name]) => ({ id, name, source: SOURCE })) },
+      { name: tr('歌单', 'Playlists'), list: [{ id: 'playlists', name: tr('服务器歌单', 'Server playlists'), source: SOURCE }] },
     ],
     hot: [
-      { id: 'newest', name: '最新添加', source: SOURCE },
-      { id: 'frequent', name: '常听专辑', source: SOURCE },
+      { id: 'newest', name: tr('最新添加', 'Recently added'), source: SOURCE },
+      { id: 'frequent', name: tr('常听专辑', 'Most played'), source: SOURCE },
     ],
     source: SOURCE,
   };
@@ -240,7 +250,7 @@ async function discoveryPlaylists(_source, { category, page }) {
     total = sizeOf(c, list.length);
   } else {
     const found = ALBUM_KINDS.find(([id]) => id === kind);
-    if (!found) throw new Error('无效的专辑分类');
+    if (!found) throw new Error(tr('无效的专辑分类', 'Invalid album category'));
     const section = await library(s);
     const c = await api(s, `/library/sections/${section}/all`, { type: 9, sort: found[2] }, window);
     list = arr(c.Metadata).map((a) => albumItem(s, a));
@@ -255,7 +265,7 @@ async function discoveryCharts() {
 
 async function chartDetail(_source, { id, page }) {
   const chart = CHARTS.find(([cid]) => cid === id);
-  if (!chart) throw new Error('无效榜单参数');
+  if (!chart) throw new Error(tr('无效榜单参数', 'Invalid chart parameter'));
   const s = settings();
   const section = await library(s);
   const result = await trackPage(s, `/library/sections/${section}/all`, { type: 10, sort: chart[2] }, page, PAGE);
@@ -323,17 +333,17 @@ async function partKey(s, item) {
   const known = item && item.typeUrl && item.typeUrl.partKey;
   if (typeof known === 'string' && known.startsWith('/')) return known;
   const id = String((item && item.songmid) || '');
-  if (!id || id.length > 128) throw new Error('无效歌曲 ID');
+  if (!id || id.length > 128) throw new Error(tr('无效歌曲 ID', 'Invalid song ID'));
   const v = arr((await api(s, `/library/metadata/${enc(id)}`, {})).Metadata)[0] || {};
   const key = str(arr(arr(v.Media)[0] && arr(v.Media)[0].Part)[0], 'key');
-  if (!key) throw new Error('这首歌没有可播放的文件');
+  if (!key) throw new Error(tr('这首歌没有可播放的文件', 'This song has no playable file'));
   return key;
 }
 
 async function streamUrl(item, quality, download) {
   const s = settings();
   const id = String((item && item.songmid) || '');
-  if (!id || id.length > 128) throw new Error('缺少歌曲 ID');
+  if (!id || id.length > 128) throw new Error(tr('缺少歌曲 ID', 'Missing song ID'));
   if (BITRATE[quality]) {
     // Lower qualities go through Plex's transcoder, as MP3.
     const q = {
@@ -362,7 +372,7 @@ const downloadUrl = (_source, { song: item, quality }) => streamUrl(item, qualit
 async function cover(_source, { song: item }) {
   if (item && typeof item.img === 'string' && item.img) return item.img;
   const id = String((item && item.songmid) || '');
-  if (!id || id.length > 128) throw new Error('无效歌曲 ID');
+  if (!id || id.length > 128) throw new Error(tr('无效歌曲 ID', 'Invalid song ID'));
   const s = settings();
   const v = arr((await api(s, `/library/metadata/${enc(id)}`, {})).Metadata)[0] || {};
   return thumb(s, str(v, 'parentThumb') || str(v, 'thumb') || str(v, 'grandparentThumb'), 300);
@@ -372,14 +382,18 @@ module.exports = {
   listPlugin: {
     cover,
     name: 'Plex（列表）',
-    version: '1.0.0',
+    displayName: tr('Plex（列表）', 'Plex (List)'),
+    version: '1.1.0',
     author: 'Mio Music',
-    description: 'Plex Media Server 的音乐库：搜索、专辑与歌单、最近添加/常听歌曲、歌手，并由本插件提供播放与下载。',
+    description: tr(
+      'Plex Media Server 的音乐库：搜索、专辑与歌单、最近添加/常听歌曲、歌手，并由本插件提供播放与下载。',
+      'Plex Media Server music library: search, albums and playlists, recently added/most played songs and artists, with playback and download provided by this plugin.',
+    ),
     config: [
-      { key: 'baseUrl', label: '服务器地址', type: 'text', required: true, placeholder: 'http://192.168.1.2:32400', description: '服务器根地址，默认端口 32400' },
-      { key: 'token', label: 'Plex 令牌', type: 'password', required: true, description: 'X-Plex-Token：在 Plex 网页中打开任一媒体 → 获取信息 → 查看 XML，地址末尾的 X-Plex-Token' },
-      { key: 'library', label: '音乐库名称', type: 'text', placeholder: '留空使用第一个音乐库', description: '有多个音乐库时填写要使用的库名' },
-      { key: 'allowHttp', label: '允许 HTTP（不加密）', type: 'switch', default: false, description: '回环地址（localhost）无需勾选' },
+      { key: 'baseUrl', label: tr('服务器地址', 'Server address'), type: 'text', required: true, placeholder: 'http://192.168.1.2:32400', description: tr('服务器根地址，默认端口 32400', 'Server root, default port 32400') },
+      { key: 'token', label: tr('Plex 令牌', 'Plex token'), type: 'password', required: true, description: tr('X-Plex-Token：在 Plex 网页中打开任一媒体 → 获取信息 → 查看 XML，地址末尾的 X-Plex-Token', 'X-Plex-Token: in the Plex web app open any media item → Get Info → View XML, and copy X-Plex-Token from the end of the address') },
+      { key: 'library', label: tr('音乐库名称', 'Music library name'), type: 'text', placeholder: tr('留空使用第一个音乐库', 'Leave empty to use the first music library'), description: tr('有多个音乐库时填写要使用的库名', 'The library to use when there are several') },
+      { key: 'allowHttp', label: tr('允许 HTTP（不加密）', 'Allow HTTP (unencrypted)'), type: 'switch', default: false, description: tr('回环地址（localhost）无需勾选', 'Not needed for loopback addresses (localhost)') },
     ],
     defaults: { play: true, download: true },
     sources: {

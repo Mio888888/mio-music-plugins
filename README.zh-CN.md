@@ -8,14 +8,20 @@
 
 | 文件 | 来源 ID | 版本 | 能力 |
 |---|---|---|---|
-| `songloft.list.js` | `songloft` | 1.0.0 | 搜索、专辑/歌手/流派与歌单、发现、歌词、播放与下载 |
-| `subsonic.list.js` | `subsonic` | 1.2.1 | 搜索、专辑与歌单、发现、播放与下载。适用于任何兼容 Subsonic 的服务器；无歌手页与歌词（Navidrome 请用 `navidrome`） |
-| `navidrome.list.js` | `navidrome` | 1.0.0 | 搜索、专辑与歌单、发现、歌手、歌词、播放与下载 |
-| `jellyfin.list.js` | `jellyfin` | 1.0.0 | 搜索、专辑与歌单、发现、歌手、歌词、播放与下载 |
-| `emby.list.js` | `emby` | 1.0.0 | 搜索、专辑与歌单、发现、歌手、播放与下载（无歌词） |
-| `plex.list.js` | `plex` | 1.0.0 | 搜索、专辑与歌单、发现、歌手、播放与下载（无歌词） |
+| `songloft.list.js` | `songloft` | 1.1.0 | 搜索、专辑/歌手/流派与歌单、发现、歌词、播放与下载 |
+| `subsonic.list.js` | `subsonic` | 1.3.0 | 搜索、专辑与歌单、发现、播放与下载。适用于任何兼容 Subsonic 的服务器；无歌手页与歌词（Navidrome 请用 `navidrome`） |
+| `navidrome.list.js` | `navidrome` | 1.1.0 | 搜索、专辑与歌单、发现、歌手、歌词、播放与下载 |
+| `jellyfin.list.js` | `jellyfin` | 1.1.0 | 搜索、专辑与歌单、发现、歌手、歌词、播放与下载 |
+| `emby.list.js` | `emby` | 1.1.0 | 搜索、专辑与歌单、发现、歌手、播放与下载（无歌词） |
+| `plex.list.js` | `plex` | 1.1.0 | 搜索、专辑与歌单、发现、歌手、播放与下载（无歌词） |
 
 所有插件提供相同的音质选项（`128k`、`320k`、`flac`），配置表单里都有“测试连接”。
+
+## 语言
+
+插件文本为中英双语，并跟随 Mio-Music 的语言：描述、配置表单标签、发现分类、榜单名称和错误提示都会在应用内切换语言时随之切换，已安装的插件会自动刷新且保留配置。宿主通过 `cerumusic.locale`（`zh-CN` 或 `en-US`）告诉脚本当前语言；宿主没有提供时使用中文。
+
+插件的 `name` 保持中文（如 `Navidrome（列表）`），因为宿主靠它识别已安装的插件；界面显示的标题来自可选的 `displayName`，它是双语的。
 
 ## 使用
 
@@ -48,8 +54,10 @@
 
 ## 契约
 
-脚本导出 `module.exports = { listPlugin: { name, version, author, description, config, sources, ...方法 } }`，方法返回与宿主 `mio-music-sdk` 类型一致的 camelCase JSON。宿主提供 `cerumusic.request`、`cerumusic.requestAll`、`cerumusic.storage`、`cerumusic.config`、`cerumusic.utils.crypto.md5` 等；没有文件系统、进程和 `require`。限制：单次调用 30 秒、最多 24 个请求、响应体 ≤16MB、脚本 ≤1MiB。
+脚本导出 `module.exports = { listPlugin: { name, displayName, version, author, description, config, sources, ...方法 } }`，方法返回与宿主 `mio-music-sdk` 类型一致的 camelCase JSON。宿主提供 `cerumusic.request`、`cerumusic.requestAll`、`cerumusic.storage`、`cerumusic.config`、`cerumusic.utils.crypto.md5` 等；`cerumusic.locale` 是界面语言（`zh-CN` 或 `en-US`）；没有文件系统、进程和 `require`。限制：单次调用 30 秒、最多 24 个请求、响应体 ≤16MB、脚本 ≤1MiB。
+
+面向用户的文本都走 `tr(中文, 英文)`，它在每个脚本开头根据 `cerumusic.locale` 定义。新增的文本（包括抛出的错误信息）都要用它包起来，`name` 与头部 `@name` 保持不变。
 
 ## 验证状态
 
-Navidrome 与 Jellyfin 已对官方公开演示服务器实际调用；Songloft、Plex、Emby 仅按其文档用本地模拟服务跑通流程，未对真实服务器验证；Subsonic 没有对真实服务器的验证记录；Jellyfin 的下载地址因演示账号无权限未验证。本仓库没有自动化测试。
+Navidrome 与 Jellyfin 已对官方公开演示服务器实际调用；Songloft、Plex、Emby 仅按其文档用本地模拟服务跑通流程，未对真实服务器验证；Subsonic 没有对真实服务器的验证记录；Jellyfin 的下载地址因演示账号无权限未验证。双语文本已在宿主运行时中以两种语言加载全部六个脚本做过检查（元数据、配置表单标签、发现分类、缺少配置时的报错），也验证了已安装插件切换语言；需要真实服务器才会走到的英文错误提示和榜单名称没有运行过。本仓库没有自动化测试。

@@ -8,14 +8,20 @@ Music list plugins for [Mio-Music](https://github.com/Mio888888/Mio-Music): inte
 
 | File | Source ID | Version | Capabilities |
 |---|---|---|---|
-| `songloft.list.js` | `songloft` | 1.0.0 | Search, albums/artists/genres and playlists, discovery, lyrics, playback and download |
-| `subsonic.list.js` | `subsonic` | 1.2.1 | Search, albums and playlists, discovery, playback and download. Any Subsonic-compatible server; no artist pages or lyrics (use `navidrome` for Navidrome) |
-| `navidrome.list.js` | `navidrome` | 1.0.0 | Search, albums and playlists, discovery, artists, lyrics, playback and download |
-| `jellyfin.list.js` | `jellyfin` | 1.0.0 | Search, albums and playlists, discovery, artists, lyrics, playback and download |
-| `emby.list.js` | `emby` | 1.0.0 | Search, albums and playlists, discovery, artists, playback and download (no lyrics) |
-| `plex.list.js` | `plex` | 1.0.0 | Search, albums and playlists, discovery, artists, playback and download (no lyrics) |
+| `songloft.list.js` | `songloft` | 1.1.0 | Search, albums/artists/genres and playlists, discovery, lyrics, playback and download |
+| `subsonic.list.js` | `subsonic` | 1.3.0 | Search, albums and playlists, discovery, playback and download. Any Subsonic-compatible server; no artist pages or lyrics (use `navidrome` for Navidrome) |
+| `navidrome.list.js` | `navidrome` | 1.1.0 | Search, albums and playlists, discovery, artists, lyrics, playback and download |
+| `jellyfin.list.js` | `jellyfin` | 1.1.0 | Search, albums and playlists, discovery, artists, lyrics, playback and download |
+| `emby.list.js` | `emby` | 1.1.0 | Search, albums and playlists, discovery, artists, playback and download (no lyrics) |
+| `plex.list.js` | `plex` | 1.1.0 | Search, albums and playlists, discovery, artists, playback and download (no lyrics) |
 
 All plugins offer the same quality options (`128k`, `320k`, `flac`), and each has a connection test in its configuration form.
+
+## Language
+
+Plugin text is bilingual (Chinese and English) and follows the language of Mio-Music: descriptions, form labels, discovery categories, chart names and error messages all switch when you change the language in the app, and a plugin that is already installed is refreshed without losing its configuration. The host tells scripts which language is active through `cerumusic.locale` (`zh-CN` or `en-US`). A host that does not provide it gets Chinese.
+
+The plugin `name` stays Chinese (for example `Navidrome（列表）`) because the host identifies an installed plugin by it. The title the interface shows comes from the optional `displayName`, which is bilingual.
 
 ## Usage
 
@@ -48,8 +54,10 @@ This repository is mounted at `plugins/` in Mio-Music as a submodule, and the ap
 
 ## Contract
 
-A script exports `module.exports = { listPlugin: { name, version, author, description, config, sources, ...methods } }`, and its methods return camelCase JSON matching the host's `mio-music-sdk` types. The host provides `cerumusic.request`, `cerumusic.requestAll`, `cerumusic.storage`, `cerumusic.config`, `cerumusic.utils.crypto.md5` and so on; there is no file system, no process and no `require`. Limits: 30 seconds per call, at most 24 requests, response body ≤ 16 MB, script ≤ 1 MiB.
+A script exports `module.exports = { listPlugin: { name, displayName, version, author, description, config, sources, ...methods } }`, and its methods return camelCase JSON matching the host's `mio-music-sdk` types. The host provides `cerumusic.request`, `cerumusic.requestAll`, `cerumusic.storage`, `cerumusic.config`, `cerumusic.utils.crypto.md5` and so on; `cerumusic.locale` is the interface language (`zh-CN` or `en-US`); there is no file system, no process and no `require`. Limits: 30 seconds per call, at most 24 requests, response body ≤ 16 MB, script ≤ 1 MiB.
+
+User-facing text goes through `tr(zh, en)`, defined at the top of each script from `cerumusic.locale`. Wrap every new string, including thrown error messages, and keep the `name` and the header `@name` unchanged.
 
 ## Verification status
 
-Navidrome and Jellyfin have been exercised against their official public demo servers. Songloft, Plex and Emby have only been run end to end against local mock servers built from their documentation, not against real servers. Subsonic has no recorded verification against a real server. Jellyfin download URLs are unverified because the demo account lacks permission. There is no automated test suite in this repository.
+Navidrome and Jellyfin have been exercised against their official public demo servers. Songloft, Plex and Emby have only been run end to end against local mock servers built from their documentation, not against real servers. Subsonic has no recorded verification against a real server. Jellyfin download URLs are unverified because the demo account lacks permission. The bilingual text was checked by loading all six scripts in the host runtime in both languages (metadata, form labels, discovery categories and the missing-configuration error) and by switching the language of an installed plugin; the English error messages and chart names on paths that need a live server were not run. There is no automated test suite in this repository.
